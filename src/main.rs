@@ -2,12 +2,12 @@ use std::io::Read;
 use std::sync::Arc;
 use std::{io, thread};
 
+use feedapi::feedapi::*;
+use feedapi::feedapi_grpc::{self, FeedApi};
 use futures::channel::oneshot;
 use futures::executor::block_on;
 use futures::prelude::*;
-use grpcio::{ChannelBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink};
-use feedapi::feedapi::*;
-use feedapi::feedapi_grpc::{self, FeedApi};
+use grpcio::{Environment, RpcContext, ServerBuilder, UnarySink};
 
 #[derive(Clone)]
 struct FeedApiService;
@@ -19,13 +19,18 @@ impl FeedApi for FeedApiService {
         req: CreateFeedRowRequest,
         sink: UnarySink<CreateFeedRowResponse>,
     ) {
-        println!("Received Create Feed {{ {:?} }}", req);
-        let mut feed = CreateFeedRowResponse::new();
+        println!("Received CreateFeedRowRequest {{ {:?} }}", req);
+        let create_feed_response = CreateFeedRowResponse::new();
 
         let f = sink
-            .success(feed.clone())
+            .success(create_feed_response.clone())
             .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
-            .map(move |_| println!("Responded with Check {{ {:?} }}", check));
+            .map(move |_| {
+                println!(
+                    "Responded with CreateFeedRowResponse {{ {:?} }}",
+                    create_feed_response
+                )
+            });
         ctx.spawn(f)
     }
     fn add_state_to_feed_row(
@@ -34,59 +39,97 @@ impl FeedApi for FeedApiService {
         req: AddStateToFeedRowRequest,
         sink: UnarySink<AddStateToFeedRowResponse>,
     ) {
-        println!("Received Add State To Feed {{ {:?} }}", req);
-        let mut feed = CreateFeedRowResponse::new();
+        println!("Received AddStateToFeedRowRequest {{ {:?} }}", req);
+        let add_state_resp = AddStateToFeedRowResponse::new();
 
         let f = sink
-            .success(feed.clone())
+            .success(add_state_resp.clone())
             .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
-            .map(move |_| println!("Responded with Check {{ {:?} }}", check));
+            .map(move |_| {
+                println!(
+                    "Responded with AddStateToFeedRowResponse {{ {:?} }}",
+                    add_state_resp
+                )
+            });
         ctx.spawn(f)
-
     }
+
     fn update_state(
         &mut self,
-        ctx: ::grpcio::RpcContext,
-        req: super::feedapi::UpdateStateRequest,
-        sink: ::grpcio::UnarySink<super::feedapi::UpdateStateResponse>,
-    );
-    fn get_feed(
-        &mut self,
-        ctx: ::grpcio::RpcContext,
-        req: super::feedapi::GetFeedRequest,
-        sink: ::grpcio::UnarySink<super::feedapi::GetFeedResponse>,
-    );
+        ctx: RpcContext,
+        req: UpdateStateRequest,
+        sink: UnarySink<UpdateStateResponse>,
+    ) {
+        println!("Received UpdateStateRequest {{ {:?} }}", req);
+        let update_state_response = UpdateStateResponse::new();
+
+        let f = sink
+            .success(update_state_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with UpdateStateResponse {{ {:?} }}",
+                    update_state_response
+                )
+            });
+        ctx.spawn(f)
+    }
+    fn get_feed(&mut self, ctx: RpcContext, req: GetFeedRequest, sink: UnarySink<GetFeedResponse>) {
+        println!("Received GetFeedRequest {{ {:?} }}", req);
+        let get_feed_response = GetFeedResponse::new();
+
+        let f = sink
+            .success(get_feed_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with GetFeedResponse {{ {:?} }}",
+                    get_feed_response
+                )
+            });
+        ctx.spawn(f)
+    }
+
     fn get_feed_row(
         &mut self,
-        ctx: ::grpcio::RpcContext,
-        req: super::feedapi::GetFeedRowRequest,
-        sink: ::grpcio::UnarySink<super::feedapi::GetFeedRowResponse>,
-    );
+        ctx: RpcContext,
+        req: GetFeedRowRequest,
+        sink: UnarySink<GetFeedRowResponse>,
+    ) {
+        println!("Received GetFeedRowResponse {{ {:?} }}", req);
+        let get_feed_row_response = GetFeedRowResponse::new();
+
+        let f = sink
+            .success(get_feed_row_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with GetFeedRowResponse {{ {:?} }}",
+                    get_feed_row_response
+                )
+            });
+        ctx.spawn(f)
+    }
 }
 fn main() {
+    let env = Arc::new(Environment::new(1));
+    let service = feedapi_grpc::create_feed_api(FeedApiService);
 
-    // let env = Arc::new(Environment::new(1));
-    // let service = create_greeter(GreeterService);
-
-    // let quota = ResourceQuota::new(Some("HelloServerQuota")).resize_memory(1024 * 1024);
-    // let ch_builder = ChannelBuilder::new(env.clone()).set_resource_quota(quota);
-
-    // let mut server = ServerBuilder::new(env)
-    //     .register_service(service)
-    //     .bind("127.0.0.1", 50_051)
-    //     .channel_args(ch_builder.build_args())
-    //     .build()
-    //     .unwrap();
-    // server.start();
-    // for (host, port) in server.bind_addrs() {
-    //     info!("listening on {}:{}", host, port);
-    // }
-    // let (tx, rx) = oneshot::channel();
-    // thread::spawn(move || {
-    //     info!("Press ENTER to exit...");
-    //     let _ = io::stdin().read(&mut [0]).unwrap();
-    //     tx.send(())
-    // });
-    // let _ = block_on(rx);
-    // let _ = block_on(server.shutdown());
+    let mut server = ServerBuilder::new(env)
+        .register_service(service)
+        .bind("127.0.0.1", 50505)
+        .build()
+        .unwrap();
+    server.start();
+    for (ref host, port) in server.bind_addrs() {
+        println!("listening on {}:{}", host, port);
+    }
+    let (tx, rx) = oneshot::channel();
+    thread::spawn(move || {
+        println!("Press ENTER to exit...");
+        let _ = io::stdin().read(&mut [0]).unwrap();
+        tx.send(())
+    });
+    let _ = block_on(rx);
+    let _ = block_on(server.shutdown());
 }

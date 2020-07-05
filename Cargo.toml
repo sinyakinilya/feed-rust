@@ -1,5 +1,5 @@
 [package]
-name = "feed"
+name = "feed-rust"
 version = "0.1.0"
 authors = ["Ilya Sinyakin <sinyakin.ilya@gmail.com>"]
 edition = "2018"
@@ -9,8 +9,8 @@ publish = false
 name = "feedapi"
 path = "src/proto/feedapi/lib.rs"
 
-[build-dependencies]
-protoc-rust = "2.15.1"
+# [build-dependencies]
+# protoc-rust = "2.15.1"
 
 
 [dependencies]
