@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package feedapi;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = ".;feedapi";
+
+service FeedAPI {
+  rpc CreateFeedRow(CreateFeedRowRequest) returns (CreateFeedRowResponse);
+  rpc AddStateToFeedRow(AddStateToFeedRowRequest)
+      returns (AddStateToFeedRowResponse);
+  rpc UpdateState(UpdateStateRequest) returns (UpdateStateResponse);
+  rpc GetFeed(GetFeedRequest) returns (GetFeedResponse);
+  rpc GetFeedRow(GetFeedRowRequest) returns (GetFeedRowResponse);
+}
+
+message State {
+  string ID = 1;
+  string Code = 2;
+  bytes Params = 3; // map[sting]interface{}
+  google.protobuf.Timestamp CreatedAt = 4;
+}
+
+message UpdateStateRequest {
+  string FeedRowID = 1;
+  string AccountID = 2;
+  State State = 3;
+}
+
+message UpdateStateResponse { Error Error = 1; }
+message Balance {
+  string Type = 1; // Debit | Credit
+  int64 Amount = 2;
+  string AssetType = 3;
+  string AssetTitle = 4;
+}
+
+message OperationObject {
+  string ID = 1;
+  string Title = 2;
+  string Url = 3; // optional example image
+  bytes Meta = 4; // map[string]interface{}
+}
+message CreateFeedRowRequest {
+  message Row {
+    string RowID = 1;
+    string AccountID = 2;
+    string PartnerAccountID = 3;
+    string GroupID = 4;
+    google.protobuf.Timestamp CreatedAt = 5;
+    string OperationType = 6; // "p2p Sell | p2p Buy | Deposit(currency|asset) |
+                              // Withdraw(currency|asset)"
+    repeated OperationObject OperationObjects = 7;
+    Balance Balance = 8;
+    string ContractorID = 9;
+    State State = 10;
+    bytes Details = 11; // map[string]interface{}
+  }
+  repeated Row Rows = 1;
+}
+
+message CreateFeedRowResponse {
+  message Row {
+    bool Ok = 1;
+    Error Error = 2;
+  }
+  repeated Row Rows = 1;
+}
+
+message AddStateToFeedRowRequest {
+  message AddState {
+    string FeedRowID = 1;
+    string AccountID = 2;
+    State State = 3;
+  }
+  repeated AddState AddStates = 1;
+}
+
+message AddStateToFeedRowResponse {
+  message AddState {
+    bool Ok = 1;
+    Error Error = 2;
+  }
+  repeated AddState AddStates = 1;
+}
+
+message GetFeedRequest {
+  int64 Limit = 1;
+  int64 Offset = 2;
+
+  string AccountID = 3;
+  string GroupID = 4;
+
+  message Filter {
+    // Example: { fieldName: Params.active, value: true}
+    string ParamName = 1;
+    string ParamValue = 2;
+  }
+  repeated Filter StateParamFilter = 5;
+
+  message Order {
+    // Params.active desc
+    string ParamName = 1;
+    OrderDir Dir = 2;
+  }
+  repeated Order Orders = 6;
+}
+
+message Contractor {
+  string ID = 1;
+  map<string, string> Params = 2;
+}
+
+message GetFeedResponse {
+  Error Error = 1;
+  int64 Total = 2;
+  message FeedRow {
+    string ID = 1;
+    string AccountID = 2;
+    string PartnerAccountID = 3;
+    google.protobuf.Timestamp CreatedAt = 4;
+    Contractor Contractor = 5;
+    string OperationType = 6;
+    repeated OperationObject OperationObjects = 7;
+    Balance Balance = 8;
+    State CurrentState = 9;
+  }
+  repeated FeedRow Feed = 3;
+}
+
+message GetFeedRowRequest {
+  repeated string FeedRowIDs = 1;
+  string AccountID = 2;
+  bool IsRaw = 3;
+}
+
+message GetFeedRowResponse {
+  message Row {
+    Error Error = 1;
+    string ID = 2;
+    string AccountID = 3;
+    string PartnerAccountID = 4;
+    google.protobuf.Timestamp CreatedAt = 5;
+    Contractor Contractor = 6;
+    string OperationType = 7;
+    repeated OperationObject OperationObjects = 8;
+    Balance Balance = 9;
+    repeated State States = 10; // IsRaw = false
+    bytes StatesRaw = 11;       // IsRaw = true
+    State CurrentState = 12;
+    bytes Details = 13;
+  }
+  repeated Row Rows = 1;
+}
+
+message Error {
+  ErrorCode Code = 1;
+  string Message = 2;
+}
+
+enum ErrorCode {
+  UndefinedError = 0;
+  ValidationError = 1;
+  StateNotFound = 2;
+  FeedRowExists = 3;
+  ContractorNotFound = 4;
+  FeedRowNotFound = 5;
+}
+
+enum OrderDir {
+  Asc = 0;
+  Desc = 1;
+}
+
+// asyncly:fires
+message AsyncFeedRowCreatedEvent {
+  string FeedRowID = 1;
+  string AccountID = 2;
+  google.protobuf.Timestamp CreatedAt = 3;
+}
+
+// asyncly:fires
+message AsyncFeedRowUpdatedEvent {
+  string FeedRowID = 1;
+  string AccountID = 2;
+  State State = 3;
+  google.protobuf.Timestamp UpdatedAt = 4;
+}

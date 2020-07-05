@@ -1,0 +1,23 @@
+[package]
+name = "feed"
+version = "0.1.0"
+authors = ["Ilya Sinyakin <sinyakin.ilya@gmail.com>"]
+edition = "2018"
+publish = false
+
+[lib]
+name = "feedapi"
+path = "src/proto/feedapi/lib.rs"
+
+[build-dependencies]
+protoc-rust = "2.15.1"
+
+
+[dependencies]
+protobuf = "2.15.1"
+grpcio = "0.6"
+libc = "0.2"
+futures = "0.3"
+prost = { version = "0.6", optional = true }
+bytes = { version = "0.5", optional = true }
+log = "0.4"
