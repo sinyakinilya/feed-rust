@@ -9,6 +9,8 @@ use futures::executor::block_on;
 use futures::prelude::*;
 use grpcio::{Environment, RpcContext, ServerBuilder, UnarySink};
 
+mod config;
+
 #[derive(Clone)]
 struct FeedApiService;
 
@@ -114,6 +116,9 @@ impl FeedApi for FeedApiService {
 fn main() {
     let env = Arc::new(Environment::new(1));
     let service = feedapi_grpc::create_feed_api(FeedApiService);
+
+    let cfg =config::resolve_cfg().unwrap();
+    println!("{:?}", cfg);
 
     let mut server = ServerBuilder::new(env)
         .register_service(service)

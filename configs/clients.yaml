@@ -1,0 +1,5 @@
+- repository: https://github.com/dmarket/mobile-notification-service
+  version: v1.1.1
+  proto:
+      - dir: mns
+        path: api/mns/mns.proto
