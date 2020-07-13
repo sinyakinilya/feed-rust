@@ -3,6 +3,7 @@ use mongodb::{
     sync::{Client, Collection},
 };
 
+use std::{collections::HashMap, time::SystemTime};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -55,3 +56,56 @@ impl FeedCollection {
         feed
     }
 }
+
+struct FeedRow {
+    idempotent_key: IdempotentKey,
+    id: FeedRowID,
+    account_id: AccountID,
+    partner_account_id: AccountID,
+    group_id: String,
+    operation_type: String, // "p2p Sell | p2p Buy | Deposit(currency|asset) | Withdraw(currency|asset)"
+    contractor_id: ContractorID,
+    operation_objects: Vec<OperationObject>,
+    balance: Balance,
+    states: States,
+    current_state: CurrentState,
+    details: Details,
+    created_at: SystemTime,
+}
+type FeedRowID = String;
+type AccountID = Uuid;
+type ContractorID = String;
+type Details = HashMap<String, Vec<u8>>;
+
+type ObjectMeta = HashMap<String, Vec<u8>>; //golang map[string]interface{}
+
+struct OperationObject {
+    id: String,
+    title: String,
+    url: String,
+    meta: ObjectMeta,
+}
+
+struct Balance {
+    balance_type: String,
+    amount: i64,
+    asset_title: String,
+    asset_type: String,
+}
+struct CurrentState {
+    id: StateID,
+    code: StateCode,
+    params: Params, // "timer":"123123123","active":"true","link_url":"http://escort-service.endpoint?param1=1"
+    updated_at: SystemTime,
+}
+type Params = HashMap<String, Vec<u8>>;
+type States = HashMap<StateID, State>;
+type State = HashMap<StateCode, StateInfo>;
+type StateCode = String;
+type StateID = String;
+struct StateInfo {
+    params: Params,
+    created_at: SystemTime,
+}
+
+type IdempotentKey = String;
