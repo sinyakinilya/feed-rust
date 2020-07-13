@@ -22,9 +22,9 @@ use std::path::Path;
 use std::string::String;
 
 #[derive(Debug, Deserialize)]
-struct MongoCfg {
-    url: String,
-    db_name: String,
+pub struct MongoCfg {
+    pub url: String,
+    pub db_name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,7 +44,7 @@ struct Clients {
 }
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    mongo: MongoCfg,
+    pub mongo: MongoCfg,
     rabbitmq: RabbitCfg,
     clients: Clients,
 }

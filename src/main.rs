@@ -10,6 +10,7 @@ use futures::prelude::*;
 use grpcio::{Environment, RpcContext, ServerBuilder, UnarySink};
 
 mod config;
+mod mongo;
 
 #[derive(Clone)]
 struct FeedApiService;
@@ -117,9 +118,14 @@ fn main() {
     let env = Arc::new(Environment::new(1));
     let service = feedapi_grpc::create_feed_api(FeedApiService);
 
-    let cfg =config::resolve_cfg().unwrap();
-    println!("{:?}", cfg);
+    let consul_cfg = config::resolve_cfg().unwrap();
+    //    println!("{:?}", cfg);
 
+    let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
+    let row_id = uuid::Uuid::parse_str("d75e3228-7de5-497b-a137-466a7bc754cc".as_ref()).unwrap();
+
+    let feed = f_collection.find_feed(row_id);
+    println!("{:?}", feed);
     let mut server = ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", 50505)
