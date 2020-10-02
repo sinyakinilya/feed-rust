@@ -14,11 +14,11 @@ mod mongo;
 
 #[derive(Clone)]
 struct FeedApiService {
-    feed_collection: Arc<&'static mongo::FeedCollection>,
+    feed_collection: Arc<mongo::FeedCollection>,
 }
 
 impl FeedApiService {
-    fn new(col: &'static mongo::FeedCollection) -> Self {
+    fn new(col: mongo::FeedCollection) -> Self {
         FeedApiService {
             feed_collection: Arc::new(col),
         }
@@ -226,21 +226,10 @@ impl FeedApi for FeedApiService {
 }
 fn main() {
     let env = Arc::new(Environment::new(1));
-
     let consul_cfg = config::resolve_cfg().unwrap();
-    //    println!("{:?}", cfg);
-
     let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
-
-    let feed_service = FeedApiService::new(&f_collection);
-
+    let feed_service = FeedApiService::new(f_collection);
     let service = feedapi_grpc::create_feed_api(feed_service);
-
-    let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
-    let row_id = uuid::Uuid::parse_str("d75e3228-7de5-497b-a137-466a7bc754cc".as_ref()).unwrap();
-
-    let feed = f_collection.find_feed(row_id);
-    println!("{:?}", feed);
     let mut server = ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", 50505)

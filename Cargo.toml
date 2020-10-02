@@ -13,8 +13,8 @@ path = "src/proto/feedapi/lib.rs"
 name="feed-srv"
 path = "src/server.rs"
 
-# [build-dependencies]
-# protoc-rust = "2.15.1"
+[build-dependencies]
+protoc-rust = "2.17.0"
 
 
 [dependencies]
