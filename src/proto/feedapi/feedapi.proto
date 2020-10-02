@@ -13,6 +13,15 @@ service FeedAPI {
   rpc UpdateState(UpdateStateRequest) returns (UpdateStateResponse);
   rpc GetFeed(GetFeedRequest) returns (GetFeedResponse);
   rpc GetFeedRow(GetFeedRowRequest) returns (GetFeedRowResponse);
+
+  rpc CreateContractor(CreateContractorRequest)
+      returns (CreateContractorResponse);
+  rpc UpdateContractor(UpdateContractorRequest)
+      returns (UpdateContractorResponse);
+  rpc GetContractors(GetContractorsRequest) returns (GetContractorsResponse);
+
+  rpc HaveSeen(HaveSeenRequest) returns (HaveSeenResponse);
+  rpc Seen(SeenRequest) returns (SeenResponse);
 }
 
 message State {
@@ -105,6 +114,8 @@ message GetFeedRequest {
     OrderDir Dir = 2;
   }
   repeated Order Orders = 6;
+
+  string CurrentStateCode = 7;
 }
 
 message Contractor {
@@ -154,6 +165,26 @@ message GetFeedRowResponse {
   repeated Row Rows = 1;
 }
 
+message CreateContractorRequest { Contractor Contractor = 1; }
+
+message CreateContractorResponse { Error Error = 1; }
+
+message UpdateContractorRequest { Contractor Contractor = 1; }
+
+message UpdateContractorResponse { Error Error = 1; }
+
+message GetContractorsRequest {}
+
+message GetContractorsResponse { repeated Contractor Contractors = 1; }
+
+message HaveSeenRequest { string AccountID = 1; }
+
+message HaveSeenResponse { bool Is = 1; }
+
+message SeenRequest { string AccountID = 1; }
+
+message SeenResponse {}
+
 message Error {
   ErrorCode Code = 1;
   string Message = 2;
@@ -178,6 +209,7 @@ message AsyncFeedRowCreatedEvent {
   string FeedRowID = 1;
   string AccountID = 2;
   google.protobuf.Timestamp CreatedAt = 3;
+  string OperationType = 4;
 }
 
 // asyncly:fires
@@ -186,4 +218,5 @@ message AsyncFeedRowUpdatedEvent {
   string AccountID = 2;
   State State = 3;
   google.protobuf.Timestamp UpdatedAt = 4;
+  string OperationType = 5;
 }

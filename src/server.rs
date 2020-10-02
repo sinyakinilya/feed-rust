@@ -13,7 +13,17 @@ mod config;
 mod mongo;
 
 #[derive(Clone)]
-struct FeedApiService;
+struct FeedApiService {
+    feed_collection: Arc<&'static mongo::FeedCollection>,
+}
+
+impl FeedApiService {
+    fn new(col: &'static mongo::FeedCollection) -> Self {
+        FeedApiService {
+            feed_collection: Arc::new(col),
+        }
+    }
+}
 
 impl FeedApi for FeedApiService {
     fn create_feed_row(
@@ -113,13 +123,118 @@ impl FeedApi for FeedApiService {
             });
         ctx.spawn(f)
     }
+
+    fn create_contractor(
+        &mut self,
+        ctx: RpcContext,
+        req: CreateContractorRequest,
+        sink: UnarySink<CreateContractorResponse>,
+    ) {
+        println!("Received CreateContractorRequest {{ {:?} }}", req);
+        let create_contractor_response = CreateContractorResponse::new();
+
+        let f = sink
+            .success(create_contractor_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with CreateContractorRequest {{ {:?} }}",
+                    create_contractor_response
+                )
+            });
+
+        ctx.spawn(f)
+    }
+
+    fn update_contractor(
+        &mut self,
+        ctx: RpcContext,
+        req: UpdateContractorRequest,
+        sink: UnarySink<UpdateContractorResponse>,
+    ) {
+        println!("Received UpdateContractorResponse {{ {:?} }}", req);
+        let update_contractor_response = UpdateContractorResponse::new();
+
+        let f = sink
+            .success(update_contractor_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with UpdateContractorResponse {{ {:?} }}",
+                    update_contractor_response
+                )
+            });
+
+        ctx.spawn(f)
+    }
+
+    fn get_contractors(
+        &mut self,
+        ctx: RpcContext,
+        req: GetContractorsRequest,
+        sink: UnarySink<GetContractorsResponse>,
+    ) {
+        println!("Received GetContractorsResponse {{ {:?} }}", req);
+        let get_contractor_response = GetContractorsResponse::new();
+
+        let f = sink
+            .success(get_contractor_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with GetContractorsResponse {{ {:?} }}",
+                    get_contractor_response
+                )
+            });
+
+        ctx.spawn(f)
+    }
+
+    fn have_seen(
+        &mut self,
+        ctx: RpcContext,
+        req: HaveSeenRequest,
+        sink: UnarySink<HaveSeenResponse>,
+    ) {
+        println!("Received HaveSeenResponse {{ {:?} }}", req);
+        let have_seen_response = HaveSeenResponse::new();
+
+        let f = sink
+            .success(have_seen_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| {
+                println!(
+                    "Responded with HaveSeenResponse {{ {:?} }}",
+                    have_seen_response
+                )
+            });
+
+        ctx.spawn(f)
+    }
+
+    fn seen(&mut self, ctx: RpcContext, req: SeenRequest, sink: UnarySink<SeenResponse>) {
+        println!("Received SeenResponse {{ {:?} }}", req);
+        let seen_response = SeenResponse::new();
+
+        let f = sink
+            .success(seen_response.clone())
+            .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
+            .map(move |_| println!("Responded with SeenResponse {{ {:?} }}", seen_response));
+
+        ctx.spawn(f)
+    }
 }
 fn main() {
     let env = Arc::new(Environment::new(1));
-    let service = feedapi_grpc::create_feed_api(FeedApiService);
 
     let consul_cfg = config::resolve_cfg().unwrap();
     //    println!("{:?}", cfg);
+
+    let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
+
+    let feed_service = FeedApiService::new(&f_collection);
+
+    let service = feedapi_grpc::create_feed_api(feed_service);
 
     let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
     let row_id = uuid::Uuid::parse_str("d75e3228-7de5-497b-a137-466a7bc754cc".as_ref()).unwrap();
