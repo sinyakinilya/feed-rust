@@ -1,5 +1,6 @@
 use std::io::Read;
 use std::sync::Arc;
+use std::time::UNIX_EPOCH;
 use std::{io, thread};
 
 use feedapi::feedapi::*;
@@ -8,6 +9,7 @@ use futures::channel::oneshot;
 use futures::executor::block_on;
 use futures::prelude::*;
 use grpcio::{Environment, RpcContext, ServerBuilder, UnarySink};
+use protobuf::{well_known_types::Timestamp, RepeatedField};
 
 mod config;
 mod mongo;
@@ -110,8 +112,24 @@ impl FeedApi for FeedApiService {
         sink: UnarySink<GetFeedRowResponse>,
     ) {
         println!("Received GetFeedRowResponse {{ {:?} }}", req);
-        let get_feed_row_response = GetFeedRowResponse::new();
+        let rows_id = req.get_FeedRowIDs();
+        let rows = self.feed_collection.find_feed(rows_id.to_vec());
+        let mut get_feed_row_response = GetFeedRowResponse::new();
+        let mut rsp_row = vec![];
+        for row in rows.iter() {
+            let mut t = Timestamp::new();
+            let duration = row.created_at.duration_since(UNIX_EPOCH).unwrap();
+            t.set_seconds(duration.as_secs() as i64);
+            t.set_nanos(duration.subsec_nanos() as i32);
 
+            let mut r = GetFeedRowResponse_Row::new();
+            r.set_ID(row.id.to_string());
+            r.set_AccountID(row.account_id.to_string());
+            r.set_PartnerAccountID(row.partner_account_id.to_string());
+            r.set_CreatedAt(t);
+            rsp_row.push(r);
+        }
+        get_feed_row_response.set_Rows(RepeatedField::from_vec(rsp_row));
         let f = sink
             .success(get_feed_row_response.clone())
             .map_err(move |err| eprintln!("Failed to reply: {:?}", err))
