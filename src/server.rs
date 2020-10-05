@@ -12,17 +12,22 @@ use grpcio::{Environment, RpcContext, ServerBuilder, UnarySink};
 use protobuf::{well_known_types::Timestamp, RepeatedField};
 
 mod config;
-mod mongo;
+mod repository;
 
 #[derive(Clone)]
 struct FeedApiService {
-    feed_collection: Arc<mongo::FeedCollection>,
+    feed_collection: Arc<repository::FeedCollection>,
+    contractor_collection: Arc<repository::ContractorCollection>,
 }
 
 impl FeedApiService {
-    fn new(col: mongo::FeedCollection) -> Self {
+    fn new(cfg: &config::Config) -> Self {
+        let feed_collection = repository::FeedCollection::new(&cfg.mongo.url);
+        let contractor_collection = repository::ContractorCollection::new(&cfg.mongo.url);
+
         FeedApiService {
-            feed_collection: Arc::new(col),
+            feed_collection: Arc::new(feed_collection),
+            contractor_collection: Arc::new(contractor_collection),
         }
     }
 }
@@ -113,7 +118,7 @@ impl FeedApi for FeedApiService {
     ) {
         println!("Received GetFeedRowResponse {{ {:?} }}", req);
         let rows_id = req.get_FeedRowIDs();
-        let rows = self.feed_collection.find_feed(rows_id.to_vec());
+        let rows = self.feed_collection.find_feed(rows_id.to_vec()).unwrap();
         let mut get_feed_row_response = GetFeedRowResponse::new();
         let mut rsp_row = vec![];
         for row in rows.iter() {
@@ -150,6 +155,13 @@ impl FeedApi for FeedApiService {
     ) {
         println!("Received CreateContractorRequest {{ {:?} }}", req);
         let create_contractor_response = CreateContractorResponse::new();
+        let _r = self
+            .contractor_collection
+            .store(&repository::Contractor {
+                id: req.get_Contractor().get_ID().to_string(),
+                params: req.get_Contractor().get_Params().to_owned(),
+            })
+            .unwrap();
 
         let f = sink
             .success(create_contractor_response.clone())
@@ -245,8 +257,7 @@ impl FeedApi for FeedApiService {
 fn main() {
     let env = Arc::new(Environment::new(1));
     let consul_cfg = config::resolve_cfg().unwrap();
-    let f_collection = mongo::FeedCollection::new(&consul_cfg.mongo.url);
-    let feed_service = FeedApiService::new(f_collection);
+    let feed_service = FeedApiService::new(&consul_cfg);
     let service = feedapi_grpc::create_feed_api(feed_service);
     let mut server = ServerBuilder::new(env)
         .register_service(service)
