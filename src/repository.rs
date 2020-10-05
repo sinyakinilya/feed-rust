@@ -1,5 +1,6 @@
 use mongodb::{
     bson::{doc, Bson, Document},
+    error::{ErrorKind, WriteFailure},
     sync::{Client, Collection},
 };
 
@@ -24,7 +25,7 @@ pub struct Feed {
 
 impl FeedCollection {
     pub fn new(url: &str) -> Self {
-        println!("try to connect {}", url);
+        println!("try to connect feed {}", url);
         let client = Client::with_uri_str(url).unwrap();
         let database = client.database("feed");
         let collection = database.collection("feed");
@@ -32,7 +33,7 @@ impl FeedCollection {
         Self { collection }
     }
 
-    pub fn find_feed(&self, ids: Vec<String>) -> Vec<FeedRow> {
+    pub fn find_feed(&self, ids: Vec<String>) -> Result<Vec<FeedRow>, ()> {
         let filter = doc! {
             "id": {"$in": ids}
         };
@@ -54,10 +55,13 @@ impl FeedCollection {
                     //     println!("no account_id found");
                     // }
                 }
-                Err(e) => println!("{:?}", e),
+                Err(e) => {
+                    println!("{:?}", e);
+                    return Err(());
+                }
             }
         }
-        feed
+        Ok(feed)
     }
 }
 
@@ -157,5 +161,73 @@ impl From<Document> for FeedRow {
             details: HashMap::new(),
             created_at: SystemTime::now(),
         }
+    }
+}
+
+pub struct ContractorCollection {
+    collection: Collection,
+}
+
+impl ContractorCollection {
+    pub fn new(url: &str) -> Self {
+        println!("try to connect contractor collection{}", url);
+        let client = Client::with_uri_str(url).unwrap();
+        let database = client.database("feed");
+        let collection = database.collection("contractor");
+
+        Self { collection }
+    }
+
+    pub fn store(&self, app: &Contractor) -> Result<(), ()> {
+        let mut params = Document::new();
+        for k in app.params.keys().into_iter() {
+            params.insert(k.to_string(), app.params[k].to_string());
+        }
+        let doc = doc! {
+            "_id": app.id.clone(),
+            "params": params,
+        };
+
+        match *self.collection.insert_one(doc, None).unwrap_err().kind {
+            ErrorKind::WriteError(WriteFailure::WriteError(ref w_error)) => {
+                if w_error.code == 11000 {
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Contractor {
+    pub id: String,
+    pub params: HashMap<String, String>,
+}
+
+impl Into<Document> for Contractor {
+    fn into(self) -> Document {
+        let mut d = Document::new();
+        for k in self.params.keys().into_iter() {
+            d.insert(k.to_string(), self.params[k].to_string());
+        }
+        d.insert("_id", self.id);
+        d
+    }
+}
+
+impl From<Document> for Contractor {
+    fn from(d: Document) -> Self {
+        let id = d.get("_id").and_then(Bson::as_str).unwrap().to_string();
+
+        let doc_params = d.get_document("params").unwrap();
+        let mut params: HashMap<String, String> = HashMap::new();
+        for k in doc_params.keys().into_iter() {
+            let v = d.get_str(k).unwrap();
+            params.insert(k.to_string(), v.to_string());
+        }
+        Self { id, params }
     }
 }
